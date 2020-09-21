@@ -175,6 +175,10 @@ add_executable(mono_inertial_euroc
 Examples/Monocular-Inertial/mono_inertial_euroc.cc)
 target_link_libraries(mono_inertial_euroc ${PROJECT_NAME})
 
+add_executable(mono_inertial_nexus5x
+Examples/Monocular-Inertial/mono_inertial_nexus5x.cc)
+target_link_libraries(mono_inertial_nexus5x ${PROJECT_NAME})
+
 add_executable(mono_inertial_tum_vi
 Examples/Monocular-Inertial/mono_inertial_tum_vi.cc)
 target_link_libraries(mono_inertial_tum_vi ${PROJECT_NAME})

@@ -136,6 +136,11 @@ public:
     // This function must be called before saving the trajectory.
     void Shutdown();
 
+
+    void SaveCompleteTrajectory(const string &filename);
+    void SaveTracks(const string &filename);
+    void SaveMapPoints(const string &filename);
+
     // Save camera trajectory in the TUM RGB-D dataset format.
     // Only for stereo and RGB-D. This method does not work for monocular.
     // Call first Shutdown()

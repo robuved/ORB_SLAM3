@@ -108,8 +108,8 @@ int main(int argc, char **argv)
 void ImageGrabber::GrabImage(const sensor_msgs::ImageConstPtr &img_msg)
 {
   mBufMutex.lock();
-  if (!img0Buf.empty())
-    img0Buf.pop();
+  // if (!img0Buf.empty())
+  //   img0Buf.pop();
   img0Buf.push(img_msg);
   mBufMutex.unlock();
 }
