@@ -596,6 +596,7 @@ void System::SaveMapPoints(const string &filename)
     }
 
     f.close();
+    cout << "Saved map!" << endl;
 }
 
 
@@ -620,11 +621,84 @@ void System::SaveTracks(const string &filename)
             tuple<int,int> indexes = mit->second;
             int leftIndex = get<0>(indexes), rightIndex = get<1>(indexes);
             cv::KeyPoint kpt = pKFi->mvKeys[leftIndex];
-            f << vpMPs[i]->mnId << "," << pKFi->mnId << "," << pKFi->mTimeStamp * 1e9 << "," << kpt.pt.x << "," << kpt.pt.y << endl;
+            f << vpMPs[i]->mnId << "," << pKFi->mnId << "," << pKFi->mTimeStamp * 1e9 << "," << kpt.pt.x << "," << kpt.pt.y;
+            // if (pKFi->mDescriptors.rows > leftIndex) {
+            //     cv::Mat des = pKFi->mDescriptors.row(leftIndex);
+            //     f << ',' << des;
+            // }
+            f << endl;
         }
     }
 
     f.close();
+    cout << "Saved tracks!" << endl;
+}
+
+
+void System::SaveKeyFrameTrajectory(const string &filename)
+{
+	cout << endl << "Saving keyframe trajectory to " << filename << " ..." << endl;
+
+    vector<Map*> vpMaps = mpAtlas->GetAllMaps();
+    Map* pBiggerMap;
+    int numMaxKFs = 0;
+    for(Map* pMap :vpMaps)
+    {
+        if(pMap->GetAllKeyFrames().size() > numMaxKFs)
+        {
+            numMaxKFs = pMap->GetAllKeyFrames().size();
+            pBiggerMap = pMap;
+        }
+    }
+
+    vector<KeyFrame*> vpKFs = pBiggerMap->GetAllKeyFrames();
+    sort(vpKFs.begin(),vpKFs.end(),KeyFrame::lId);
+
+    // Transform all keyframes so that the first keyframe is at the origin.
+    // After a loop closure the first keyframe might not be at the origin.
+    ofstream f;
+    f.open(filename.c_str());
+    f << fixed;
+
+    f << "timestamp [ns],ID,tx,ty,tz,qx,qy,qz,qw,vx,vy,vz,bax,bay,baz,bgx,bgy,bgz" << endl;
+
+    for(size_t i=0; i<vpKFs.size(); i++)
+    {
+        KeyFrame* pKF = vpKFs[i];
+
+       // pKF->SetPose(pKF->GetPose()*Two);
+
+        if(pKF->isBad())
+            continue;
+
+        cv::Mat velocity = pKF->GetVelocity();
+        cv::Mat accBias = pKF->GetAccBias();
+        cv::Mat gyroBias = pKF->GetGyroBias();
+
+        if (mSensor == IMU_MONOCULAR || mSensor == IMU_STEREO)
+        {
+            cv::Mat R = pKF->GetImuRotation().t();
+            vector<float> q = Converter::toQuaternion(R);
+            cv::Mat twb = pKF->GetImuPosition();
+            f << 1e9*pKF->mTimeStamp << "," << pKF->mnId << "," << setprecision(9) << twb.at<float>(0) << "," << twb.at<float>(1) << "," << twb.at<float>(2) << "," << q[0] << "," << q[1] << "," << q[2] << "," << q[3] << ","
+            << velocity.at<float>(0) << "," << velocity.at<float>(1) << "," << velocity.at<float>(2) << ","
+            << accBias.at<float>(0) << "," << accBias.at<float>(1) << "," << accBias.at<float>(2) << ","
+            << gyroBias.at<float>(0) << "," << gyroBias.at<float>(1) << "," << gyroBias.at<float>(2) << ","
+            << endl;
+        }
+        else
+        {
+            cv::Mat R = pKF->GetRotation();
+            vector<float> q = Converter::toQuaternion(R);
+            cv::Mat t = pKF->GetCameraCenter();
+            f << 1e9*pKF->mTimeStamp << "," << pKF->mnId << "," << setprecision(9) << t.at<float>(0) << "," << t.at<float>(1) << "," << t.at<float>(2) << "," << q[0] << "," << q[1] << "," << q[2] << "," << q[3] << ","
+            << velocity.at<float>(0) << "," << velocity.at<float>(1) << "," << velocity.at<float>(2) << ","
+            << accBias.at<float>(0) << "," << accBias.at<float>(1) << "," << accBias.at<float>(2) << ","
+            << gyroBias.at<float>(0) << "," << gyroBias.at<float>(1) << "," << gyroBias.at<float>(2) << ","
+            << endl;        }
+    }
+    f.close();
+    cout << "Saved kf trajectory!" << endl;
 }
 
 
@@ -723,13 +797,14 @@ void System::SaveCompleteTrajectory(const string &filename)
 
         //cout << "3" << endl;
 
-        Trw = Trw*pKF->GetPose()*Twb; // Tcp*Tpw*Twb0=Tcb0 where b0 is the new world reference
-
+        // Trw = Trw*pKF->GetPose()*Twb; // Tcp*Tpw*Twb0=Tcb0 where b0 is the new world reference
+        Trw = Trw*pKF->GetPose(); // Tcp*Tpw*Twb0=Tcb0 where b0 is the new world reference
+        // Trw = (*lRit)->GetPose();
         // cout << "4" << endl;
 
-        cv::Mat velocity = pKF->GetVelocity();
-        cv::Mat accBias = pKF->GetAccBias();
-        cv::Mat gyroBias = pKF->GetGyroBias();
+        cv::Mat velocity = (*lRit)->GetVelocity();
+        cv::Mat accBias = (*lRit)->GetAccBias();
+        cv::Mat gyroBias = (*lRit)->GetGyroBias();
 
         if (mSensor == IMU_MONOCULAR || mSensor == IMU_STEREO)
         {
@@ -737,7 +812,7 @@ void System::SaveCompleteTrajectory(const string &filename)
             cv::Mat Rwb = Tbw.rowRange(0,3).colRange(0,3).t();
             cv::Mat twb = -Rwb*Tbw.rowRange(0,3).col(3);
             vector<float> q = Converter::toQuaternion(Rwb);
-            f << 1e9*(*lT) << "," << pKF->mnId << "," <<  setprecision(9) << twb.at<float>(0) << "," << twb.at<float>(1) << "," << twb.at<float>(2) << "," << q[0] << "," << q[1] << "," << q[2] << "," << q[3] << ","
+            f << 1e9*(*lT) << "," << pKF->mnId << "," << setprecision(9) << twb.at<float>(0) << "," << twb.at<float>(1) << "," << twb.at<float>(2) << "," << q[0] << "," << q[1] << "," << q[2] << "," << q[3] << ","
             << velocity.at<float>(0) << "," << velocity.at<float>(1) << "," << velocity.at<float>(2) << ","
             << accBias.at<float>(0) << "," << accBias.at<float>(1) << "," << accBias.at<float>(2) << ","
             << gyroBias.at<float>(0) << "," << gyroBias.at<float>(1) << "," << gyroBias.at<float>(2) << ","
@@ -749,7 +824,7 @@ void System::SaveCompleteTrajectory(const string &filename)
             cv::Mat Rwc = Tcw.rowRange(0,3).colRange(0,3).t();
             cv::Mat twc = -Rwc*Tcw.rowRange(0,3).col(3);
             vector<float> q = Converter::toQuaternion(Rwc);
-            f << 1e9*(*lT) << "," << pKF->mnId << "," <<  setprecision(9) << twc.at<float>(0) << "," << twc.at<float>(1) << "," << twc.at<float>(2) << "," << q[0] << "," << q[1] << "," << q[2] << "," << q[3] << ","
+            f << 1e9*(*lT) << "," << pKF->mnId << "," << setprecision(9) << twc.at<float>(0) << "," << twc.at<float>(1) << "," << twc.at<float>(2) << "," << q[0] << "," << q[1] << "," << q[2] << "," << q[3] << ","
             << velocity.at<float>(0) << "," << velocity.at<float>(1) << "," << velocity.at<float>(2) << ","
             << accBias.at<float>(0) << "," << accBias.at<float>(1) << "," << accBias.at<float>(2) << ","
             << gyroBias.at<float>(0) << "," << gyroBias.at<float>(1) << "," << gyroBias.at<float>(2) << ","
@@ -761,6 +836,7 @@ void System::SaveCompleteTrajectory(const string &filename)
     //cout << "end saving trajectory" << endl;
     f.close();
     cout << endl << "End of saving trajectory to " << filename << " ..." << endl;
+    cout << "Saved trajectory!" << endl;
 }
 
 

@@ -121,7 +121,7 @@ int main(int argc, char *argv[])
     cout << "IMU data in the sequence: " << nImu << endl << endl;*/
 
     // Create SLAM system. It initializes all system threads and gets ready to process frames.
-    ORB_SLAM3::System SLAM(argv[1],argv[2],ORB_SLAM3::System::IMU_MONOCULAR, true);
+    ORB_SLAM3::System SLAM(argv[1],argv[2],ORB_SLAM3::System::IMU_MONOCULAR, false);
 
     int proccIm=0;
     for (seq = 0; seq<num_seq; seq++)
@@ -211,15 +211,18 @@ int main(int argc, char *argv[])
     if (bFileName)
     {
         const string traj_file =  string(argv[argc-1]) + "_trajectory.csv";
+        const string ktraj_file =  string(argv[argc-1]) + "_ktrajectory.csv";
         const string tracks_file =  string(argv[argc-1]) + "_tracks.csv";
         const string map_file =  string(argv[argc-1]) + "_map.csv";
         SLAM.SaveCompleteTrajectory(traj_file);
+        SLAM.SaveKeyFrameTrajectory(ktraj_file);
         SLAM.SaveTracks(tracks_file);
         SLAM.SaveMapPoints(map_file);
     }
     else
     {
-        SLAM.SaveCompleteTrajectory("CameraTrajectory.csv");
+        SLAM.SaveCompleteTrajectory("Trajectory.csv");
+        SLAM.SaveKeyFrameTrajectory("KFTrajectory.csv");
         SLAM.SaveTracks("Tracks.csv");
         SLAM.SaveMapPoints("Map.csv");
     }

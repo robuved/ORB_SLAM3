@@ -131,14 +131,14 @@ void LocalMapping::Run()
                         float dist = cv::norm(mpCurrentKeyFrame->mPrevKF->GetCameraCenter() - mpCurrentKeyFrame->GetCameraCenter()) +
                                 cv::norm(mpCurrentKeyFrame->mPrevKF->mPrevKF->GetCameraCenter() - mpCurrentKeyFrame->mPrevKF->GetCameraCenter());
 
-                        if(dist>0.01)
+                        if(dist>0.005)
                         {
                             mTinit += mpCurrentKeyFrame->mTimeStamp - mpCurrentKeyFrame->mPrevKF->mTimeStamp;
                             cout << "mTinit: " << mTinit << endl;
                         }    
                         if(!mpCurrentKeyFrame->GetMap()->GetIniertialBA2())
                         {
-                            if((mTinit<10.f) && (dist<0.005))
+                            if((mTinit<3.0f) && (dist<0.002))
                             {
                                 cout << "Not enough motion for initializing (" << mTinit << ", " << dist << "). Reseting..." << endl;
                                 unique_lock<mutex> lock(mMutexReset);
@@ -209,7 +209,7 @@ void LocalMapping::Run()
 
                         // scale refinement
                         if (((mpAtlas->KeyFramesInMap())<=100) &&
-                                ((mTinit>11.0f && mTinit<100.0f)||
+                                ((mTinit>10.1f && mTinit<100.0f)||
                                 (mTinit>25.0f && mTinit<25.5f)||
                                 (mTinit>35.0f && mTinit<35.5f)||
                                 (mTinit>45.0f && mTinit<45.5f)||

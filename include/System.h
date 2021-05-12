@@ -136,7 +136,7 @@ public:
     // This function must be called before saving the trajectory.
     void Shutdown();
 
-
+    void SaveKeyFrameTrajectory(const string &filename);
     void SaveCompleteTrajectory(const string &filename);
     void SaveTracks(const string &filename);
     void SaveMapPoints(const string &filename);
